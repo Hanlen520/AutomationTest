@@ -298,10 +298,17 @@ class AppOperator:
         :return: 图片存储的路径
         """
         webElement = self._change_element_to_webElement_type(element)
-        left = webElement.location['x']
-        top = webElement.location['y']
-        right = webElement.location['x'] + webElement.size['width']
-        bottom = webElement.location['y'] + webElement.size['height']
+        webElement_x=webElement.location['x']
+        webElement_y = webElement.location['y']
+        webElement_width=webElement.size['width']
+        webElement_height=webElement.size['height']
+        screen_size=self.get_window_size()
+        screen_width=screen_size['width']
+        screen_height=screen_size['height']
+        left_percent=webElement_x/screen_width
+        top_percent=webElement_y/screen_height
+        right_percent=(webElement_x+webElement_width)/screen_width
+        bottom_percent=(webElement_y+webElement_height)/screen_height
         # 进行屏幕截图
         image_file_name = DateTimeTool.getNowTime('%Y%m%d%H%M%S%f_') + '%s.png'%image_file_name
         if not os.path.exists('output/tmp/'):
@@ -309,8 +316,11 @@ class AppOperator:
         image_file_name = os.path.abspath('output/tmp/' + image_file_name)
         self._driver.get_screenshot_as_file(image_file_name)
         img = Image.open(image_file_name)
+        img_size=img.size
+        img_width=img_size[0]
+        img_height=img_size[1]
         # 验证码图片裁切并保存
-        img = img.crop((left, top, right, bottom))
+        img = img.crop((left_percent*img_width, top_percent*img_height, right_percent*img_width, bottom_percent*img_height))
         img.save(image_file_name)
         return image_file_name
 
@@ -848,8 +858,10 @@ class AppOperator:
             end_y=dst_y+dst_height*dst_end_y_percent
             self._driver.swipe(start_x=start_x, start_y=start_y, end_x=end_x, end_y=end_y, duration=duration)
 
-    def touch_a_element_move_to_another_element(self,src_element,dst_element,src_start_x_percent=0.5,src_start_y_percent=0.5,
-                                                dst_end_x_percent=0.5,dst_end_y_percent=0.5):
+    def touch_a_element_move_to_another_element(self, src_element, dst_element, src_start_x_percent=0.5,
+                                                src_start_y_percent=0.5,
+                                                dst_end_x_percent=0.5, dst_end_y_percent=0.5, long_press=True,
+                                                duration=0):
         """
         通过一个元素宽度、高度的百分比值的位置点击移动到另一个元素宽度、高度的百分比值的位置
         :param src_element: 开始的元素
@@ -858,35 +870,80 @@ class AppOperator:
         :param src_start_y_percent: 相对元素高度的百分比
         :param dst_end_x_percent: 相对元素宽度的百分比
         :param dst_end_y_percent: 相对元素高度的百分比
+        :param long_press: 是否长按
+        :param duration: 耗时
         :return:
         """
-        if src_start_x_percent>=1:
-            src_start_x_percent=0.99
-        if src_start_y_percent>=1:
-            src_start_y_percent=0.99
-        if dst_end_x_percent>=1:
-            dst_end_x_percent=0.99
-        if dst_end_y_percent>=1:
-            dst_end_y_percent=0.99
-        src_webElement=self._change_element_to_webElement_type(src_element)
+        if src_start_x_percent >= 1:
+            src_start_x_percent = 0.99
+        if src_start_y_percent >= 1:
+            src_start_y_percent = 0.99
+        if dst_end_x_percent >= 1:
+            dst_end_x_percent = 0.99
+        if dst_end_y_percent >= 1:
+            dst_end_y_percent = 0.99
+        src_webElement = self._change_element_to_webElement_type(src_element)
         dst_webElement = self._change_element_to_webElement_type(dst_element)
         if src_webElement and dst_webElement:
-            src_rect=src_webElement.rect
+            src_rect = src_webElement.rect
             src_height = src_rect['height']
             src_width = src_rect['width']
             src_x = src_rect['x']
             src_y = src_rect['y']
-            dst_rect=dst_webElement.rect
+            dst_rect = dst_webElement.rect
             dst_height = dst_rect['height']
             dst_width = dst_rect['width']
             dst_x = dst_rect['x']
             dst_y = dst_rect['y']
             # 计算位置
-            start_x=src_x+src_width*src_start_x_percent
-            start_y=src_y+src_height*src_start_y_percent
-            end_x=dst_x+dst_width*dst_end_x_percent
-            end_y=dst_y+dst_height*dst_end_y_percent
-            self.touch_move_to(start_x,start_y,end_x,end_y)
+            start_x = src_x + src_width * src_start_x_percent
+            start_y = src_y + src_height * src_start_y_percent
+            end_x = dst_x + dst_width * dst_end_x_percent
+            end_y = dst_y + dst_height * dst_end_y_percent
+            self.touch_move_to(start_x, start_y, end_x, end_y, long_press, duration)
+
+    def touch_a_element_drag_to_another_element(self, src_element, dst_element, src_start_x_percent=0.5,
+                                                src_start_y_percent=0.5,
+                                                dst_end_x_percent=0.5, dst_end_y_percent=0.5, duration=0.5):
+        """
+        【仅适用IOS】通过一个元素宽度、高度的百分比值的位置点击拖拽到另一个元素宽度、高度的百分比值的位置
+        :param src_element: 开始的元素
+        :param dst_element: 结束的元素
+        :param src_start_x_percent: 相对元素宽度的百分比
+        :param src_start_y_percent: 相对元素高度的百分比
+        :param dst_end_x_percent: 相对元素宽度的百分比
+        :param dst_end_y_percent: 相对元素高度的百分比
+        :return:
+        """
+        if src_start_x_percent >= 1:
+            src_start_x_percent = 0.99
+        if src_start_y_percent >= 1:
+            src_start_y_percent = 0.99
+        if dst_end_x_percent >= 1:
+            dst_end_x_percent = 0.99
+        if dst_end_y_percent >= 1:
+            dst_end_y_percent = 0.99
+        src_webElement = self._change_element_to_webElement_type(src_element)
+        dst_webElement = self._change_element_to_webElement_type(dst_element)
+        if src_webElement and dst_webElement:
+            src_rect = src_webElement.rect
+            src_height = src_rect['height']
+            src_width = src_rect['width']
+            src_x = src_rect['x']
+            src_y = src_rect['y']
+            dst_rect = dst_webElement.rect
+            dst_height = dst_rect['height']
+            dst_width = dst_rect['width']
+            dst_x = dst_rect['x']
+            dst_y = dst_rect['y']
+            # 计算位置
+            start_x = src_x + src_width * src_start_x_percent
+            start_y = src_y + src_height * src_start_y_percent
+            end_x = dst_x + dst_width * dst_end_x_percent
+            end_y = dst_y + dst_height * dst_end_y_percent
+            self._driver.execute_script("mobile:dragFromToForDuration",
+                                        {"duration": duration, "element": None, "fromX": start_x, "fromY": start_y,
+                                         "toX": end_x, "toY": end_y})
 
     def get_element_size_in_pixels(self,element):
         """
@@ -976,22 +1033,25 @@ class AppOperator:
         actions.release()
         actions.perform()
 
-    def touch_move_to(self,start_x,start_y,end_x,end_y,duration=0):
+    def touch_move_to(self,start_x,start_y,end_x,end_y,long_press=True,duration=0):
         """
         点击从一个点移动到另外一个点
         :param start_x:
         :param start_y:
         :param end_x:
         :param end_y:
+        :param long_press: 是否长按
         :param duration: 为0时不会出现惯性滑动
         :return:
         """
-        # actions = TouchAction(self._driver)
-        # actions.press(x=start_x, y=start_y)
-        # actions.move_to(x=end_x, y=end_y)
-        # actions.perform()
-        action = TouchAction(self._driver)
-        action.long_press(x=start_x,y=start_y,duration=duration).move_to(x=end_x,y=end_y).release().perform()
+        if long_press:
+            action = TouchAction(self._driver)
+            action.long_press(x=start_x,y=start_y,duration=duration).move_to(x=end_x,y=end_y).release().perform()
+        else:
+            actions = TouchAction(self._driver)
+            actions.press(x=start_x, y=start_y).wait(duration)
+            actions.move_to(x=end_x, y=end_y)
+            actions.perform()
 
     def touch_tap(self,element,xoffset=None,yoffset=None,count=1,is_perfrom=True):
         """
